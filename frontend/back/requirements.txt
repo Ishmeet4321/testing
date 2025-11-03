@@ -1,0 +1,12 @@
+flask
+flask-cors
+torch
+torchaudio
+transformers
+librosa
+soundfile
+opencv-python
+numpy
+pandas
+scipy
+Pillow
