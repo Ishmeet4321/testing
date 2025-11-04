@@ -118,34 +118,50 @@ def analyze_prosody(audio_path):
         "target_area": target_area  # NEW: Return what to work on
     }
 
+# NEW: Mapping emotion to feature for the prompt
+EMOTION_TO_FEATURE = {
+    "happy": "energy",
+    "surprise": "pitch",
+    "sad": "rate",
+    "fear": "general",
+    "angry": "energy",
+    "neutral": "general"
+}
+
 def generate_practice_sentence(feature="general"):
     """
-    Generate a truly random, Lingo-model-based sentence tailored to the user's weak speech field.
-    No string-based fallbacks. Every sentence is a new Ganga model completion.
+    Generate a Lingo-model-based sentence tailored to the user's weak speech field
+    and with an explicit expected emotion. Returns a dictionary with text and emotion.
     """
     _load_lingo_models()
     import random
 
+    # 1. Select the target emotion
+    # Prioritize the weak feature's associated emotion, otherwise choose randomly
+    if feature != "general":
+        expected_emotion = next((e for e, f in EMOTION_TO_FEATURE.items() if f == feature), random.choice(list(EMOTION_TO_FEATURE.keys())))
+    else:
+        # If general, select a random one (excluding neutral for better practice)
+        emotion_choices = [e for e in EMOTION_TO_FEATURE.keys() if e != "neutral"]
+        expected_emotion = random.choice(emotion_choices)
+
+    # 2. Update prompt patterns to include emotion context
     prompt_patterns = {
         "pitch": [
-            "ऐसा हिंदी वाक्य जनरेट करें जिसमें आवाज़ का उतार-चढ़ाव आ सके।",
-            "एक अभ्यास हिंदी वाक्य जिससे बोलने में उच्चारण बदल सके।",
-            "ऐसा वाक्य जो पढ़ते समय intonation सुधार सके।"
+            f"एक हिंदी वाक्य जनरेट करें जो {expected_emotion} का भाव दर्शाए और जिसमें आवाज़ का उतार-चढ़ाव आ सके।"
         ],
         "energy": [
-            "एक हिंदी वाक्य बनाओ जिसे बहुत ऊर्जा और उत्साह के साथ बोला जाए।",
-            "ऐसा हिंदी वाक्य जनरेट करें जिसे तेज़ और ज़ोर से बोला जा सके।",
-            "एक ऐसी लाइन हिंदी में दे जो डाइनामिक या expressively बोली जाती हो।"
+            f"एक हिंदी वाक्य बनाओ जिसे {expected_emotion} और उत्साह के साथ बोला जाए।"
         ],
         "rate": [
-            "ऐसा हिंदी वाक्य बनाओ जिसे आराम से, धीरे-धीरे और साफ़ बोले जा सके।",
-            "एक हिंदी वाक्य जनरेट करें जिससे बोलने की गति बेहतर हो सके।",
-            "एक लाइन जो सोचकर और धीरे-धीरे बोली जाती है।"
+            f"एक हिंदी वाक्य जनरेट करें जो {expected_emotion} का भाव दर्शाए और जिसे आराम से, धीरे-धीरे और साफ़ बोले जा सके।"
         ],
         "general": [
-            "कोई भी हिंदी प्रैक्टिस वाक्य जनरेट करें जो आम बोलचाल में आता हो।",
-            "एक सरल, असली जीवन में बोलने वाला हिंदी वाक्य जनरेट करें।",
-            "कोई knowledge बढ़ाने वाला हिंदी वाक्य जनरेट करें।"
+            f"एक हिंदी वाक्य जनरेट करें जिसे {expected_emotion} के भाव से बोला जा सके।",
+            f"कोई सरल, असली जीवन में बोलने वाला हिंदी वाक्य जनरेट करें जो {expected_emotion} दर्शाता हो।"
+        ],
+        "emotion": [
+             f"एक हिंदी वाक्य जनरेट करें जिसे {expected_emotion} के भाव से बोला जा सके।"
         ]
     }
 
@@ -195,8 +211,14 @@ def generate_practice_sentence(feature="general"):
                 if punct in sentence:
                     sentence = sentence.split(punct)[0] + punct
                     break
-        # Final fallback: if both completions fail, return a short "try again" type text, never a list-based sentence!
-        return sentence if sentence and len(sentence.split()) >= 3 else "कृपया फिर से प्रयास करें।"
+        
+        # Final fallback and return structure
+        return {
+            "text": sentence if sentence and len(sentence.split()) >= 3 else "कृपया फिर से प्रयास करें।",
+            "expected_emotion": expected_emotion 
+        }
     except Exception as e:
-        return "कृपया फिर से प्रयास करें।"
-
+        return {
+            "text": "कृपया फिर से प्रयास करें।",
+            "expected_emotion": expected_emotion
+        }

@@ -5,9 +5,19 @@ const API = axios.create({
   timeout: 120000,
 });
 
-export async function runSpeechTherapy(audioBlob) {
+// CHANGED: Accept an imageBlob and expectedEmotion string
+export async function runSpeechTherapy(audioBlob, imageBlob, expectedEmotion) {
   const fd = new FormData();
   fd.append("audio", audioBlob, "recording.wav");
+  
+  // NEW: Append image and expected emotion
+  if (imageBlob) {
+    fd.append("image", imageBlob, "image.jpg");
+  }
+  if (expectedEmotion) {
+    fd.append("expected_emotion", expectedEmotion);
+  }
+
   const res = await API.post("/speechtherapy", fd, {
     headers: { "Content-Type": "multipart/form-data" },
   });

@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from convo_assist import translate_to_english, translate_to_hindi
+import numpy as np # Import numpy once at the top for cleaner code
 
 import convo_assist
 import speech_therapy
@@ -13,11 +14,36 @@ import audio_preproc
 app = Flask(__name__)
 CORS(app)
 
+# Helper function to convert numpy types to Python native types
+def convert_to_python_types(obj):
+    if isinstance(obj, np.generic):
+        return obj.item()
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_to_python_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_to_python_types(x) for x in obj]
+    else:
+        return obj
+
 @app.route('/api/speechtherapy', methods=['POST'])
 def api_speech_therapy():
     audio_file = request.files['audio']
+    # NEW: Get the image file
+    image_file = request.files.get('image')
+    
     audio_path = "temp_audio.wav"
     audio_file.save(audio_path)
+    
+    # NEW: Analyze emotion from the image
+    detected_emotion = "neutral"
+    if image_file:
+        image_path = "temp_image.jpg"
+        image_file.save(image_path)
+        # Use your existing emotion_analysis function
+        detected_emotion = emotion_analysis.analyze_emotion(image_path)
+
     transcription_text, score = speech_therapy.get_pronunciation_score(audio_path)
     prosody = speech_therapy.analyze_prosody(audio_path)
 
@@ -28,42 +54,44 @@ def api_speech_therapy():
         score_py = float(score.item()) if hasattr(score, 'item') else float(score)
 
     # Recursively ensure ALL prosody numerical values/lists are Python types
-    import numpy as np
-    def convert(obj):
-        if isinstance(obj, np.generic):
-            return obj.item()
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {k: convert(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [convert(x) for x in obj]
-        else:
-            return obj
+    prosody_py = convert_to_python_types(prosody)
 
-    prosody_py = convert(prosody)
+    # NEW: Add emotion feedback logic
+    feedback_list = prosody_py.get("feedback", [])
+    expected_emotion = request.form.get("expected_emotion") # Get expected emotion from frontend form data
+
+    if expected_emotion and expected_emotion.lower() != detected_emotion.lower():
+        feedback_list.append(f"⚠️ Your facial expression was **{detected_emotion.capitalize()}**, but the sentence required a **{expected_emotion.capitalize()}** expression. Try matching your emotion to the text!")
+        # If emotion mismatch is critical, suggest working on it
+        if prosody_py.get("target_area", "general") == "general":
+             prosody_py["target_area"] = "emotion"
 
     return jsonify({
         "transcription": transcription_text,
         "score": score_py,
         "pronunciation_score": score_py,
-        "feedback": prosody_py.get("feedback", [])
+        "feedback": feedback_list, # Use the new list
+        "detected_emotion": detected_emotion, # NEW
+        "target_area": prosody_py.get("target_area", "general")
     })
 
 @app.route('/api/generate', methods=['POST'])
 def api_generate():
     data = request.get_json()
-    prompt = data.get("prompt", "general")  # feature type: 'pitch', 'energy', 'rate', or 'general'
-    lang = data.get("lang", "hi")  # language: 'hi' or 'en'
+    prompt = data.get("prompt", "general")
+    lang = data.get("lang", "hi")
     
     try:
-        # Call the Lingo-based function from speech_therapy module
-        generated_text = speech_therapy.generate_practice_sentence(prompt)
+        # CHANGED: Handle the new dictionary response from generate_practice_sentence
+        result = speech_therapy.generate_practice_sentence(prompt)
+        generated_text = result["text"]
+        expected_emotion = result["expected_emotion"]
         
         return jsonify({
             "text": generated_text,
             "lang": lang,
-            "prompt": prompt
+            "prompt": prompt,
+            "expected_emotion": expected_emotion # NEW: Return expected emotion
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -108,9 +136,6 @@ def api_audio_preproc():
     feat = audio_preproc.extract_audio_features(audio_path)
     return jsonify({"features": feat})
 
-if __name__ == '__main__':
-    app.run(port=5000, debug=True)
-
 @app.route('/api/feedback', methods=['POST'])
 def api_feedback():
     audio_file = request.files['audio']
@@ -120,20 +145,7 @@ def api_feedback():
     prosody = speech_therapy.analyze_prosody(audio_path)
     
     # Convert numpy types to Python types
-    import numpy as np
-    def convert(obj):
-        if isinstance(obj, np.generic):
-            return obj.item()
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {k: convert(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [convert(x) for x in obj]
-        else:
-            return obj
-    
-    prosody_py = convert(prosody)
+    prosody_py = convert_to_python_types(prosody)
     
     return jsonify({
         "feedback": prosody_py.get("feedback", []),
@@ -157,20 +169,6 @@ def api_convo_assist():
     except Exception:
         score_py = float(score.item()) if hasattr(score, 'item') else float(score)
 
-    # Recursively ensure ALL prosody numerical values/lists are Python types
-    import numpy as np
-    def convert(obj):
-        if isinstance(obj, np.generic):
-            return obj.item()
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, dict):
-            return {k: convert(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [convert(x) for x in obj]
-        else:
-            return obj
-
     return jsonify({
         "transcription": transcription_text,
         "score": score_py,
@@ -178,3 +176,7 @@ def api_convo_assist():
         "translation_en": english_text,
         "back_hindi": back_to_hindi,
     })
+
+
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
