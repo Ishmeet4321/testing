@@ -1,13 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from convo_assist import translate_to_english, translate_to_hindi
 
+import convo_assist
 import speech_therapy
 import transcription
 import emotion_analysis
 import translation
 import video_processing
 import audio_preproc
-from convo_assist import conversation_assistant
 
 app = Flask(__name__)
 CORS(app)
@@ -140,11 +141,40 @@ def api_feedback():
         "pronunciation_score": 0
     })
 
-@app.route("/api/convo_assist", methods=["POST"])
+@app.route('/api/convo_assist', methods=['POST'])
 def api_convo_assist():
-    audio_file = request.files["audio"]
-    save_path = "temp_assist.wav"
-    audio_file.save(save_path)
-    result = conversation_assistant(save_path)
-    return jsonify(result)
+    audio_file = request.files['audio']
+    audio_path = "temp_audio.wav"
+    audio_file.save(audio_path)
 
+    transcription_text, score = convo_assist.get_pronunciation_score(audio_path)
+    english_text = convo_assist.translate_to_english(transcription_text)
+    back_to_hindi = convo_assist.translate_to_hindi(english_text)
+
+    # Convert score to native float
+    try:
+        score_py = float(score)
+    except Exception:
+        score_py = float(score.item()) if hasattr(score, 'item') else float(score)
+
+    # Recursively ensure ALL prosody numerical values/lists are Python types
+    import numpy as np
+    def convert(obj):
+        if isinstance(obj, np.generic):
+            return obj.item()
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: convert(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert(x) for x in obj]
+        else:
+            return obj
+
+    return jsonify({
+        "transcription": transcription_text,
+        "score": score_py,
+        "pronunciation_score": score_py,
+        "translation_en": english_text,
+        "back_hindi": back_to_hindi,
+    })

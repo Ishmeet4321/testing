@@ -51,6 +51,17 @@ export async function generateFromPrompt(prompt, lang) {
   return res.data;
 }
 
+export async function convoAssistAPI(audioBlob) {
+  const fd = new FormData();
+  fd.append("audio", audioBlob, "recording.wav");
+  const res = await API.post("/convo_assist", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+}
+
+
+
 export async function extractAudioFeatures(audioBlob) {
   const fd = new FormData();
   fd.append("audio", audioBlob, "recording.wav");

@@ -34,19 +34,28 @@ export default function Practice() {
 
 
   const requestPractice = async () => {
-    try {
-      // UPDATED - Use targetArea instead of hardcoded 'general'
-      const backendLang = lang === 'hi-IN' ? 'hi' : 'en';
-      const resp = await generateFromPrompt(targetArea, backendLang);
-      
-      if (resp && resp.text) {
-        setPractice(resp.text);
-        speak(resp.text, lang);
-      }
-    } catch (err) {
-      console.error('Error requesting practice:', err);
+  try {
+    const backendLang = lang === 'hi-IN' ? 'hi' : 'en';
+    const resp = await generateFromPrompt(targetArea, backendLang);
+
+    // Simple check for typical instructions (customize as needed)
+    const blockList = [
+      'अपनी भाषा', 'आप कोई भी', 'choose any', 'speak any word'
+    ];
+    // You could also use regex for more robust filtering
+    if (resp && resp.text && !blockList.some(x => resp.text.includes(x))) {
+      setPractice(resp.text);
+      speak(resp.text, lang);
+    } else {
+      setPractice('');
+      // Optionally: re-trigger generation, alert, or show an error message
+      alert('No valid practice sentence generated. Please try again!');
     }
-  };
+  } catch (err) {
+    console.error('Error requesting practice:', err);
+  }
+};
+
 
 
   return (

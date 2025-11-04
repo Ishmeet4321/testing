@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Practice from './pages/Practice';
-import Assistant from './pages/Assistant';
+//import Assistant from './pages/Assistant';
 import Video from './pages/Video';
 import Chat from './pages/Chat';
 import Reports from './pages/Reports';
@@ -19,7 +19,7 @@ export default function App(){
           <Route path="/" element={<Dashboard />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/video" element={<Video />} />
-          <Route path="/assistant" element={<Assistant />} />
+          
           <Route path="/chat" element={<Chat />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />

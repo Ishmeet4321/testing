@@ -7,7 +7,7 @@ export default function Sidebar(){
     {name:'Dashboard', to:'/'},
     {name:'Practice', to:'/practice'},
     {name:'Video', to:'/video'},
-    {name: 'Assistant', to: '/assistant'},
+    {name: 'Assistant', to: '/chat'},
     {name:'Reports', to:'/reports'},
     {name:'Settings', to:'/settings'},
     //{name:'Emotion-Practice', to:'/emotion-practice'},
