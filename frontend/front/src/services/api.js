@@ -24,8 +24,15 @@ export async function runSpeechTherapy(audioBlob, imageBlob, expectedEmotion) {
   return res.data;
 }
 
-export async function runTherapyLoop(audioPath = null) {
-  const res = await API.post("/therapy_loop", { audio_path: audioPath });
+// NEW: API call for a single RL step
+export async function runTherapyStep(audioBlob, iterationNum) {
+  const fd = new FormData();
+  fd.append("audio", audioBlob, "recording.wav");
+  fd.append("iteration", iterationNum); // Send iteration number as form data
+  
+  const res = await API.post("/therapy_step", fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 }
 
