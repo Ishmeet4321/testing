@@ -10,6 +10,7 @@ import emotion_analysis
 import translation
 import video_processing
 import audio_preproc
+import speech_rl
 
 app = Flask(__name__)
 CORS(app)
@@ -176,6 +177,29 @@ def api_convo_assist():
         "translation_en": english_text,
         "back_hindi": back_to_hindi,
     })
+
+@app.route('/api/therapy_loop', methods=['POST'])
+def api_therapy_loop():
+    """
+    Optional RL-guided speech therapy session.
+    """
+    data = request.get_json(force=True)
+    initial_audio_path = data.get("audio_path", None)
+
+    try:
+        print(f"📂 Received request for therapy loop, initial_audio_path={initial_audio_path}")
+        final_metrics, final_score, history = speech_rl.therapy_reinforcement_loop(initial_audio=initial_audio_path)
+        return jsonify({
+            "status": "success",
+            "final_score": final_score,
+            "final_metrics": final_metrics,
+            "history": history
+        })
+    except Exception as e:
+        import traceback
+        print("❌ ERROR in /api/therapy_loop:")
+        traceback.print_exc()  # show full error in terminal
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == '__main__':

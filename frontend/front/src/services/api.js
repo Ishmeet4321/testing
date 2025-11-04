@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: "http://127.0.0.1:5000/api",
-  timeout: 120000,
+  timeout: 12000000,
 });
 
 // CHANGED: Accept an imageBlob and expectedEmotion string
@@ -21,6 +21,11 @@ export async function runSpeechTherapy(audioBlob, imageBlob, expectedEmotion) {
   const res = await API.post("/speechtherapy", fd, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return res.data;
+}
+
+export async function runTherapyLoop(audioPath = null) {
+  const res = await API.post("/therapy_loop", { audio_path: audioPath });
   return res.data;
 }
 

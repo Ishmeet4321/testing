@@ -54,7 +54,7 @@ def get_pronunciation_score(audio_path):
     cleaned = re.sub(r"<[^>]+>", "", predicted_text).strip()
     probs = F.softmax(logits, dim=-1)
     chosen_probs = probs.gather(-1, predicted_ids.unsqueeze(-1)).squeeze(-1)
-    score = float(chosen_probs.mean().item()) * 100
+    score = float(chosen_probs.mean().item()) 
     return cleaned, score
 
 
