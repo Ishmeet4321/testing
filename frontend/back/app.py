@@ -261,6 +261,7 @@ def api_therapy_step():
             "iteration": iter_num,
             "metrics": metrics_py,
             "reward": float(step_result["reward"]),
+            #"feedback":step_result["feedback"],
             "next_prompt": step_result["next_prompt"],
             "expected_emotion": step_result["expected_emotion"],
             "weakest_feature": step_result["weakest_feature"],

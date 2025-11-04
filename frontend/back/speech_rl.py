@@ -120,6 +120,7 @@ def therapy_step(audio_path, iter_num):
     pitch_var = prosody.get("pitch_var", 0.0)
     energy_mean = prosody.get("energy_mean", 0.0)
     speech_rate = prosody.get("speech_rate", 0.0)
+    feedback = prosody.get("feedback", [])
     
     metrics = {
         "pitch_var": pitch_var,
@@ -149,5 +150,6 @@ def therapy_step(audio_path, iter_num):
         "next_prompt": next_practice["text"],
         "expected_emotion": next_practice["expected_emotion"],
         "weakest_feature": weakest,
-        "is_complete": is_complete
+        "is_complete": is_complete,
+        #"feedback": feedback
     }

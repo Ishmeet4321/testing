@@ -23,7 +23,7 @@ export default function Practice() {
   const [rlIteration, setRlIteration] = useState(0); // Current RL step number
   const [rlPrompt, setRlPrompt] = useState(''); // Prompt for the current RL step
 
-  const MAX_ITERATIONS = 5;
+  const MAX_ITERATIONS = 3;
 
   // --- RL Step Handler (Triggers on Recording Complete ONLY when rlRunning is true) ---
   async function onRlRecordingComplete(audioBlob) {
@@ -54,6 +54,21 @@ export default function Practice() {
         setRlRunning(false);
         setRlPrompt('✅ Adaptive Therapy Complete. Check results below.');
         alert(`Adaptive Therapy Complete after ${resp.iteration} iterations! Final Reward: ${resp.reward.toFixed(3)}`);
+        
+        const sessionName = `Session_${+new Date()}`; // or keep a simple counter
+        const finishedSession = {
+          name: sessionName,
+          results: [...rlHistory, { 
+            iteration: resp.iteration, 
+            metrics: resp.metrics, 
+            reward: resp.reward,
+            weakest: resp.weakest_feature
+          }],
+          finalReward: resp.reward
+        };
+        // Load previous sessions
+        const prev = JSON.parse(localStorage.getItem('therapy_sessions') || '[]');
+        localStorage.setItem('therapy_sessions', JSON.stringify([...prev, finishedSession]));
         return;
       }
 
