@@ -175,7 +175,7 @@ def generate_practice_sentence(feature="general"):
         with torch.no_grad():
             outputs = lm_model.generate(
                 **inputs,
-                max_new_tokens=20,
+                max_new_tokens=12,
                 do_sample=True,
                 top_k=50,
                 top_p=0.97,   # maximize diversity
@@ -198,7 +198,7 @@ def generate_practice_sentence(feature="general"):
             with torch.no_grad():
                 outputs = lm_model.generate(
                     **inputs,
-                    max_new_tokens=18,
+                    max_new_tokens=10,
                     do_sample=True,
                     top_k=50,
                     top_p=0.97,

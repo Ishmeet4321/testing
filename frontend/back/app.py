@@ -1,4 +1,8 @@
 from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+import jwt
+import datetime
 from flask_cors import CORS
 from convo_assist import translate_to_english, translate_to_hindi
 import numpy as np # Import numpy once at the top for cleaner code
@@ -14,6 +18,57 @@ import speech_rl
 
 app = Flask(__name__)
 CORS(app)
+app.config['SECRET_KEY'] = 'change_this_to_a_random_secret!'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+with app.app_context():
+    db.create_all()
+
+@app.route('/api/signup', methods=['POST'])
+def signup():
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 409
+    hashed = bcrypt.generate_password_hash(password).decode('utf-8')
+    db.session.add(User(username=username, password=hashed))
+    db.session.commit()
+    return jsonify({'message': 'User created'})
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+    user = User.query.filter_by(username=username).first()
+    if user and bcrypt.check_password_hash(user.password, password):
+        token = jwt.encode({
+            'username': username, 
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=12)
+        }, app.config['SECRET_KEY'], algorithm="HS256")
+        return jsonify({'token': token})
+    return jsonify({'error': 'Invalid credentials'}), 401
+
+@app.route('/api/protected', methods=['GET'])
+def protected():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'error': 'Missing token'}), 403
+    try:
+        decoded = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        return jsonify({'message': f'Welcome {decoded["username"]}!'})
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token expired'}), 401
+    except Exception:
+        return jsonify({'error': 'Invalid token'}), 401
 
 # Helper function to convert numpy types to Python native types
 def convert_to_python_types(obj):
