@@ -233,27 +233,43 @@ def api_convo_assist():
         "back_hindi": back_to_hindi,
     })
 
-@app.route('/api/therapy_loop', methods=['POST'])
-def api_therapy_loop():
+
+@app.route('/api/therapy_step', methods=['POST'])
+def api_therapy_step():
     """
-    Optional RL-guided speech therapy session.
+    Performs one non-blocking step of the RL loop, driven by the frontend.
+    Requires audio and iteration number from the client.
     """
-    data = request.get_json(force=True)
-    initial_audio_path = data.get("audio_path", None)
+    audio_file = request.files.get('audio')
+    iter_num_str = request.form.get("iteration")
+    
+    if not audio_file or not iter_num_str:
+        return jsonify({"status": "error", "message": "Missing audio file or iteration number."}), 400
 
     try:
-        print(f"📂 Received request for therapy loop, initial_audio_path={initial_audio_path}")
-        final_metrics, final_score, history = speech_rl.therapy_reinforcement_loop(initial_audio=initial_audio_path)
+        audio_path = "rl_temp_audio.wav" # Use a dedicated audio path
+        audio_file.save(audio_path)
+        iter_num = int(iter_num_str)
+
+        step_result = speech_rl.therapy_step(audio_path, iter_num)
+        
+        # Convert NumPy types for safe JSON serialization
+        metrics_py = convert_to_python_types(step_result["metrics"])
+
         return jsonify({
             "status": "success",
-            "final_score": final_score,
-            "final_metrics": final_metrics,
-            "history": history
+            "iteration": iter_num,
+            "metrics": metrics_py,
+            "reward": float(step_result["reward"]),
+            "next_prompt": step_result["next_prompt"],
+            "expected_emotion": step_result["expected_emotion"],
+            "weakest_feature": step_result["weakest_feature"],
+            "is_complete": step_result["is_complete"]
         })
     except Exception as e:
         import traceback
-        print("❌ ERROR in /api/therapy_loop:")
-        traceback.print_exc()  # show full error in terminal
+        print("❌ ERROR in /api/therapy_step:")
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
